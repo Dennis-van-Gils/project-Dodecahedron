@@ -6,7 +6,7 @@ __author__ = "Dennis van Gils"
 __authoremail__ = "vangils.dennis@gmail.com"
 __url__ = "https://github.com/Dennis-van-Gils/project-Dodecahedron"
 __date__ = "02-03-2021"
-__version__ = "1.0"
+__version__ = "1.0.2"
 # pylint: disable=bare-except, broad-except
 
 import os
