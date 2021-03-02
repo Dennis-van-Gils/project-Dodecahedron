@@ -107,7 +107,7 @@ class MainWindow(QtWid.QWidget):
         super().__init__(parent, **kwargs)
 
         self.setWindowTitle("Dodecahedron control")
-        self.setGeometry(350, 50, 960, 800)
+        self.setGeometry(350, 60, 1200, 800)
         self.setStyleSheet(SS_TEXTBOX_READ_ONLY + SS_GROUP)
 
         # -------------------------
@@ -468,19 +468,23 @@ def write_header_to_log():
     log.write("[HEADER]\n")
     log.write(window.qtxt_comments.toPlainText())
     log.write("\n\n[DATA]\n")
-    log.write("time\ttemp_DS\ttemp_BME\thumi_BME\tpres_BME\n")
-    log.write("[s]\t[±0.5 °C]\t[±0.5 °C]\t[±3 pct]\t[±1 mbar]\n")
+    log.write(
+        "time\ttemp_DS\ttemp_BME\thumi_BME\tpres_BME\tJulabo_setp\tJulabo_bath\n"
+    )
+    log.write("[s]\t[±0.5 °C]\t[±0.5 °C]\t[±3 pct]\t[±1 mbar]\t[°C]\t[°C]\n")
 
 
 def write_data_to_log():
     log.write(
-        "%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n"
+        "%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.2f\t%.2f\n"
         % (
             log.elapsed(),
             state.ds_temp,
             state.bme_temp,
             state.bme_humi,
             state.bme_pres,
+            julabo.state.setpoint,
+            julabo.state.bath_temp,
         )
     )
 
