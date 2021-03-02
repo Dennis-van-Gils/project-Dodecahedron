@@ -323,7 +323,7 @@ class MainWindow(QtWid.QWidget):
         # Round up bottom frame
         hbox_bot = QtWid.QHBoxLayout()
         hbox_bot.addWidget(self.gw, 1)
-        hbox_bot.addWidget(julabo_qdev.grpb)
+        hbox_bot.addWidget(qdev_julabo.grpb, stretch=0)
         hbox_bot.addLayout(vbox, 0)
 
         # -------------------------
@@ -345,9 +345,9 @@ class MainWindow(QtWid.QWidget):
         self.qlbl_cur_date_time.setText(
             "%s    %s" % (str_cur_date, str_cur_time)
         )
-        self.qlbl_update_counter.setText("%i" % ard_qdev.update_counter_DAQ)
+        self.qlbl_update_counter.setText("%i" % qdev_ard.update_counter_DAQ)
         self.qlbl_DAQ_rate.setText(
-            "DAQ: %.1f Hz" % ard_qdev.obtained_DAQ_rate_Hz
+            "DAQ: %.1f Hz" % qdev_ard.obtained_DAQ_rate_Hz
         )
         if log.is_recording():
             self.qlbl_recording_time.setText(log.pretty_elapsed())
@@ -373,7 +373,7 @@ class MainWindow(QtWid.QWidget):
 
 def stop_running():
     app.processEvents()
-    ard_qdev.quit()
+    qdev_ard.quit()
     log.close()
 
     print("Stopping timers................ ", end="")
@@ -503,8 +503,6 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------
 
     # Arduino
-    # -------
-
     ard = Arduino(name="Ard", connect_to_specific_ID="BME280 & DS18B20 logger")
     ard.serial_settings["baudrate"] = 115200
     ard.auto_connect(filepath_last_known_port="config/port_Arduino.txt")
@@ -515,21 +513,45 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Julabo
-    # -------
-
     julabo = Julabo_circulator(name="Julabo")
     if julabo.auto_connect(filepath_last_known_port="config/port_Julabo.txt"):
         julabo.begin()
 
     # --------------------------------------------------------------------------
-    #   Create application and main window
+    #   Create application
     # --------------------------------------------------------------------------
     QtCore.QThread.currentThread().setObjectName("MAIN")  # For DEBUG info
 
     app = QtWid.QApplication(sys.argv)
     app.aboutToQuit.connect(about_to_quit)
 
+    # --------------------------------------------------------------------------
+    #   Set up multithreaded communication with the devices
+    # --------------------------------------------------------------------------
+
+    # Arduino
+    qdev_ard = QDeviceIO(ard)
+    qdev_ard.create_worker_DAQ(
+        DAQ_function=DAQ_function,
+        DAQ_interval_ms=DAQ_INTERVAL_MS,
+        critical_not_alive_count=3,
+        debug=DEBUG,
+    )
+
+    # Julabo
+    qdev_julabo = Julabo_circulator_qdev(
+        dev=julabo, DAQ_interval_ms=DAQ_INTERVAL_MS, debug=DEBUG
+    )
+
+    # --------------------------------------------------------------------------
+    #   Create GUI
+    # --------------------------------------------------------------------------
+
     window = MainWindow()
+
+    # Connect signals
+    qdev_ard.signal_DAQ_updated.connect(window.update_GUI)
+    qdev_ard.signal_connection_lost.connect(notify_connection_lost)
 
     # --------------------------------------------------------------------------
     #   File logger
@@ -549,35 +571,6 @@ if __name__ == "__main__":
     )
 
     # --------------------------------------------------------------------------
-    #   Set up multithreaded communication with the devices
-    # --------------------------------------------------------------------------
-
-    # Arduino
-    # -------
-
-    # fmt: off
-    ard_qdev = QDeviceIO(ard)
-    ard_qdev.create_worker_DAQ(
-        DAQ_function             = DAQ_function,
-        DAQ_interval_ms          = DAQ_INTERVAL_MS,
-        critical_not_alive_count = 3,
-        debug                    = DEBUG,
-    )
-    # fmt: on
-
-    ard_qdev.signal_DAQ_updated.connect(window.update_GUI)
-    ard_qdev.signal_connection_lost.connect(notify_connection_lost)
-    ard_qdev.start()
-
-    # Julabo
-    # ------
-
-    julabo_qdev = Julabo_circulator_qdev(
-        dev=julabo, DAQ_interval_ms=DAQ_INTERVAL_MS, debug=DEBUG
-    )
-    julabo_qdev.start()
-
-    # --------------------------------------------------------------------------
     #   Timers
     # --------------------------------------------------------------------------
 
@@ -592,6 +585,9 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------
     #   Start the main GUI event loop
     # --------------------------------------------------------------------------
+
+    qdev_ard.start()
+    qdev_julabo.start()
 
     window.show()
     sys.exit(app.exec_())
