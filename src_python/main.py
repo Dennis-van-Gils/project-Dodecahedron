@@ -448,6 +448,10 @@ def DAQ_function():
         )
         return False
 
+    # Catch very intermittent DS18B20 sensor errors
+    if state.ds_temp <= -127.0:
+        state.ds_temp = np.nan
+
     # We will use PC time instead
     state.time = time.perf_counter()
 
