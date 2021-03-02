@@ -203,19 +203,19 @@ class MainWindow(QtWid.QWidget):
 
         self.tscurve_ds_temp = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_temp.plot(pen=PEN_01, name="temp_DS"),
+            linked_curve=self.pi_temp.plot(pen=PEN_01, name="DS_temp"),
         )
         self.tscurve_bme_temp = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_temp.plot(pen=PEN_02, name="temp_BME"),
+            linked_curve=self.pi_temp.plot(pen=PEN_02, name="BME_temp"),
         )
         self.tscurve_bme_humi = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_humi.plot(pen=PEN_02, name="humi_BME"),
+            linked_curve=self.pi_humi.plot(pen=PEN_02, name="BME_humi"),
         )
         self.tscurve_bme_pres = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_pres.plot(pen=PEN_02, name="pres_BME"),
+            linked_curve=self.pi_pres.plot(pen=PEN_02, name="BME_pres"),
         )
 
         self.tscurves = [
@@ -469,7 +469,7 @@ def write_header_to_log():
     log.write(window.qtxt_comments.toPlainText())
     log.write("\n\n[DATA]\n")
     log.write(
-        "time\ttemp_DS\ttemp_BME\thumi_BME\tpres_BME\tJulabo_setp\tJulabo_bath\n"
+        "time\tDS_temp\tBME_temp\tBME_humi\tBME_pres\tJulabo_setp\tJulabo_bath\n"
     )
     log.write("[s]\t[±0.5 °C]\t[±0.5 °C]\t[±3 pct]\t[±1 mbar]\t[°C]\t[°C]\n")
 
