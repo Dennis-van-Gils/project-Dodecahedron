@@ -323,8 +323,10 @@ class MainWindow(QtWid.QWidget):
         # Round up bottom frame
         hbox_bot = QtWid.QHBoxLayout()
         hbox_bot.addWidget(self.gw, 1)
-        hbox_bot.addWidget(qdev_julabo.grpb, stretch=0)
         hbox_bot.addLayout(vbox, 0)
+        hbox_bot.addWidget(
+            qdev_julabo.grpb, alignment=QtCore.Qt.AlignTop, stretch=0
+        )
 
         # -------------------------
         #   Round up full window
@@ -374,6 +376,7 @@ class MainWindow(QtWid.QWidget):
 def stop_running():
     app.processEvents()
     qdev_ard.quit()
+    qdev_julabo.quit()
     log.close()
 
     print("Stopping timers................ ", end="")
@@ -523,6 +526,7 @@ if __name__ == "__main__":
     QtCore.QThread.currentThread().setObjectName("MAIN")  # For DEBUG info
 
     app = QtWid.QApplication(sys.argv)
+    app.setFont(QtGui.QFont("Arial", 9))
     app.aboutToQuit.connect(about_to_quit)
 
     # --------------------------------------------------------------------------
