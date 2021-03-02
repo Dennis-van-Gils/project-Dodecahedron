@@ -35,6 +35,8 @@ from dvg_pyqtgraph_threadsafe import (
 )
 
 from dvg_devices.Arduino_protocol_serial import Arduino
+from dvg_devices.Julabo_circulator_protocol_RS232 import Julabo_circulator
+from dvg_devices.Julabo_circulator_qdev import Julabo_circulator_qdev
 from dvg_qdeviceio import QDeviceIO
 
 
@@ -321,6 +323,7 @@ class MainWindow(QtWid.QWidget):
         # Round up bottom frame
         hbox_bot = QtWid.QHBoxLayout()
         hbox_bot.addWidget(self.gw, 1)
+        hbox_bot.addWidget(julabo_qdev.grpb)
         hbox_bot.addLayout(vbox, 0)
 
         # -------------------------
@@ -342,9 +345,9 @@ class MainWindow(QtWid.QWidget):
         self.qlbl_cur_date_time.setText(
             "%s    %s" % (str_cur_date, str_cur_time)
         )
-        self.qlbl_update_counter.setText("%i" % qdev_ard.update_counter_DAQ)
+        self.qlbl_update_counter.setText("%i" % ard_qdev.update_counter_DAQ)
         self.qlbl_DAQ_rate.setText(
-            "DAQ: %.1f Hz" % qdev_ard.obtained_DAQ_rate_Hz
+            "DAQ: %.1f Hz" % ard_qdev.obtained_DAQ_rate_Hz
         )
         if log.is_recording():
             self.qlbl_recording_time.setText(log.pretty_elapsed())
@@ -370,7 +373,7 @@ class MainWindow(QtWid.QWidget):
 
 def stop_running():
     app.processEvents()
-    qdev_ard.quit()
+    ard_qdev.quit()
     log.close()
 
     print("Stopping timers................ ", end="")
@@ -496,17 +499,27 @@ if __name__ == "__main__":
         print("Warning: Could not set process to maximum priority.\n")
 
     # --------------------------------------------------------------------------
-    #   Connect to Arduino
+    #   Connect to devices
     # --------------------------------------------------------------------------
+
+    # Arduino
+    # -------
 
     ard = Arduino(name="Ard", connect_to_specific_ID="BME280 & DS18B20 logger")
     ard.serial_settings["baudrate"] = 115200
-    ard.auto_connect()
+    ard.auto_connect(filepath_last_known_port="config/port_Arduino.txt")
 
     if not (ard.is_alive):
         print("\nCheck connection and try resetting the Arduino.")
         print("Exiting...\n")
         sys.exit(0)
+
+    # Julabo
+    # -------
+
+    julabo = Julabo_circulator(name="Julabo")
+    if julabo.auto_connect(filepath_last_known_port="config/port_Julabo.txt"):
+        julabo.begin()
 
     # --------------------------------------------------------------------------
     #   Create application and main window
@@ -536,15 +549,15 @@ if __name__ == "__main__":
     )
 
     # --------------------------------------------------------------------------
-    #   Set up multithreaded communication with the Arduino
+    #   Set up multithreaded communication with the devices
     # --------------------------------------------------------------------------
 
-    # Create QDeviceIO
-    qdev_ard = QDeviceIO(ard)
+    # Arduino
+    # -------
 
-    # Create workers
     # fmt: off
-    qdev_ard.create_worker_DAQ(
+    ard_qdev = QDeviceIO(ard)
+    ard_qdev.create_worker_DAQ(
         DAQ_function             = DAQ_function,
         DAQ_interval_ms          = DAQ_INTERVAL_MS,
         critical_not_alive_count = 3,
@@ -552,12 +565,17 @@ if __name__ == "__main__":
     )
     # fmt: on
 
-    # Connect signals to slots
-    qdev_ard.signal_DAQ_updated.connect(window.update_GUI)
-    qdev_ard.signal_connection_lost.connect(notify_connection_lost)
+    ard_qdev.signal_DAQ_updated.connect(window.update_GUI)
+    ard_qdev.signal_connection_lost.connect(notify_connection_lost)
+    ard_qdev.start()
 
-    # Start workers
-    qdev_ard.start(DAQ_priority=QtCore.QThread.TimeCriticalPriority)
+    # Julabo
+    # ------
+
+    julabo_qdev = Julabo_circulator_qdev(
+        dev=julabo, DAQ_interval_ms=DAQ_INTERVAL_MS, debug=DEBUG
+    )
+    julabo_qdev.start()
 
     # --------------------------------------------------------------------------
     #   Timers
