@@ -1,5 +1,5 @@
-.. image:: https://requires.io/github/Dennis-van-Gils/project-Dodecahedron/requirements.svg?branch=master
-    :target: https://requires.io/github/Dennis-van-Gils/project-Dodecahedron/requirements/?branch=master
+.. image:: https://requires.io/github/Dennis-van-Gils/project-Dodecahedron/requirements.svg?branch=main
+    :target: https://requires.io/github/Dennis-van-Gils/project-Dodecahedron/requirements/?branch=main
     :alt: Requirements Status
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/psf/black
