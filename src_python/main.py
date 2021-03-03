@@ -5,8 +5,8 @@
 __author__ = "Dennis van Gils"
 __authoremail__ = "vangils.dennis@gmail.com"
 __url__ = "https://github.com/Dennis-van-Gils/project-Dodecahedron"
-__date__ = "02-03-2021"
-__version__ = "1.0.2"
+__date__ = "03-03-2021"
+__version__ = "1.0"
 # pylint: disable=bare-except, broad-except
 
 import os
@@ -61,7 +61,7 @@ pg.setConfigOption("foreground", "#EEE")
 # fmt: off
 DAQ_INTERVAL_MS    = 1000  # [ms]
 CHART_INTERVAL_MS  = 500   # [ms]
-CHART_HISTORY_TIME = 3600  # [s]
+CHART_HISTORY_TIME = 7200  # [s]
 # fmt: on
 
 # Show debug info in terminal? Warning: Slow! Do not leave on unintentionally.
@@ -107,7 +107,7 @@ class MainWindow(QtWid.QWidget):
         super().__init__(parent, **kwargs)
 
         self.setWindowTitle("Dodecahedron control")
-        self.setGeometry(350, 60, 1200, 800)
+        self.setGeometry(350, 60, 1200, 900)
         self.setStyleSheet(SS_TEXTBOX_READ_ONLY + SS_GROUP)
 
         # -------------------------
@@ -172,20 +172,24 @@ class MainWindow(QtWid.QWidget):
 
         self.gw = pg.GraphicsLayoutWidget()
 
-        # Plot: Temperatures
+        # Plot: Julabo temperatures
         p = {"color": "#EEE", "font-size": "10pt"}
-        self.pi_temp = self.gw.addPlot(row=0, col=0)
+        self.pi_julabo = self.gw.addPlot(row=0, col=0)
+        self.pi_julabo.setLabel("left", text="temperature (°C)", **p)
+
+        # Plot: Arduino temperatures
+        self.pi_temp = self.gw.addPlot(row=1, col=0)
         self.pi_temp.setLabel("left", text="temperature (°C)", **p)
 
-        # Plot: Humidity
-        self.pi_humi = self.gw.addPlot(row=1, col=0)
+        # Plot: Arduino humidity
+        self.pi_humi = self.gw.addPlot(row=2, col=0)
         self.pi_humi.setLabel("left", text="humidity (%)", **p)
 
-        # Plot: Pressure
-        self.pi_pres = self.gw.addPlot(row=2, col=0)
+        # Plot: Arduino pressure
+        self.pi_pres = self.gw.addPlot(row=3, col=0)
         self.pi_pres.setLabel("left", text="pressure (mbar)", **p)
 
-        self.plots = [self.pi_temp, self.pi_humi, self.pi_pres]
+        self.plots = [self.pi_julabo, self.pi_temp, self.pi_humi, self.pi_pres]
         for plot in self.plots:
             plot.setClipToView(True)
             plot.showGrid(x=1, y=1)
@@ -199,26 +203,42 @@ class MainWindow(QtWid.QWidget):
         # Curves
         capacity = round(CHART_HISTORY_TIME * 1e3 / DAQ_INTERVAL_MS)
         PEN_01 = pg.mkPen(color=[255, 255, 0], width=3)
-        PEN_02 = pg.mkPen(color=[0, 255, 255], width=3)
+        PEN_02 = pg.mkPen(color=[252, 15, 192], width=3)
+        PEN_03 = pg.mkPen(color=[0, 255, 255], width=3)
+        PEN_04 = pg.mkPen(color=[255, 255, 255], width=3)
+        PEN_05 = pg.mkPen(color=[255, 127, 39], width=3)
+        PEN_06 = pg.mkPen(color=[0, 255, 0], width=3)
+
+        self.tscurve_julabo_setp = HistoryChartCurve(
+            capacity=capacity,
+            linked_curve=self.pi_julabo.plot(pen=PEN_05, name="Julabo setp."),
+        )
+
+        self.tscurve_julabo_bath = HistoryChartCurve(
+            capacity=capacity,
+            linked_curve=self.pi_julabo.plot(pen=PEN_06, name="Julabo bath"),
+        )
 
         self.tscurve_ds_temp = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_temp.plot(pen=PEN_01, name="DS_temp"),
+            linked_curve=self.pi_temp.plot(pen=PEN_01, name="DS temp."),
         )
         self.tscurve_bme_temp = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_temp.plot(pen=PEN_02, name="BME_temp"),
+            linked_curve=self.pi_temp.plot(pen=PEN_02, name="BME temp."),
         )
         self.tscurve_bme_humi = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_humi.plot(pen=PEN_02, name="BME_humi"),
+            linked_curve=self.pi_humi.plot(pen=PEN_03, name="BME humi."),
         )
         self.tscurve_bme_pres = HistoryChartCurve(
             capacity=capacity,
-            linked_curve=self.pi_pres.plot(pen=PEN_02, name="BME_pres"),
+            linked_curve=self.pi_pres.plot(pen=PEN_04, name="BME pres."),
         )
 
         self.tscurves = [
+            self.tscurve_julabo_setp,
+            self.tscurve_julabo_bath,
             self.tscurve_ds_temp,
             self.tscurve_bme_temp,
             self.tscurve_bme_humi,
@@ -244,14 +264,14 @@ class MainWindow(QtWid.QWidget):
 
         # fmt: off
         legend.grid.setHorizontalSpacing(6)
-        legend.grid.addWidget(self.qlin_ds_temp       , 0, 2)
-        legend.grid.addWidget(QtWid.QLabel("± 0.5 °C"), 0, 3)
-        legend.grid.addWidget(self.qlin_bme_temp      , 1, 2)
-        legend.grid.addWidget(QtWid.QLabel("± 0.5 °C"), 1, 3)
-        legend.grid.addWidget(self.qlin_bme_humi      , 2, 2)
-        legend.grid.addWidget(QtWid.QLabel("± 3 %")   , 2, 3)
-        legend.grid.addWidget(self.qlin_bme_pres      , 3, 2)
-        legend.grid.addWidget(QtWid.QLabel("± 1 mbar"), 3, 3)
+        legend.grid.addWidget(self.qlin_ds_temp       , 2, 2)
+        legend.grid.addWidget(QtWid.QLabel("± 0.5 °C"), 2, 3)
+        legend.grid.addWidget(self.qlin_bme_temp      , 3, 2)
+        legend.grid.addWidget(QtWid.QLabel("± 0.5 °C"), 3, 3)
+        legend.grid.addWidget(self.qlin_bme_humi      , 4, 2)
+        legend.grid.addWidget(QtWid.QLabel("± 3 %")   , 4, 3)
+        legend.grid.addWidget(self.qlin_bme_pres      , 5, 2)
+        legend.grid.addWidget(QtWid.QLabel("± 1 mbar"), 5, 3)
         # fmt: on
 
         qgrp_readings = QtWid.QGroupBox("Readings")
@@ -277,12 +297,6 @@ class MainWindow(QtWid.QWidget):
             linked_curves=self.tscurves,
             presets=[
                 {
-                    "button_label": "00:30",
-                    "x_axis_label": "history (sec)",
-                    "x_axis_divisor": 1,
-                    "x_axis_range": (-30, 0),
-                },
-                {
                     "button_label": "01:00",
                     "x_axis_label": "history (sec)",
                     "x_axis_divisor": 1,
@@ -305,6 +319,12 @@ class MainWindow(QtWid.QWidget):
                     "x_axis_label": "history (min)",
                     "x_axis_divisor": 60,
                     "x_axis_range": (-60, 0),
+                },
+                {
+                    "button_label": "120:00",
+                    "x_axis_label": "history (min)",
+                    "x_axis_divisor": 60,
+                    "x_axis_range": (-120, 0),
                 },
             ],
         )
@@ -456,6 +476,8 @@ def DAQ_function():
     state.time = time.perf_counter()
 
     # Add readings to chart histories
+    window.tscurve_julabo_setp.appendData(state.time, julabo.state.setpoint)
+    window.tscurve_julabo_bath.appendData(state.time, julabo.state.bath_temp)
     window.tscurve_ds_temp.appendData(state.time, state.ds_temp)
     window.tscurve_bme_temp.appendData(state.time, state.bme_temp)
     window.tscurve_bme_humi.appendData(state.time, state.bme_humi)
