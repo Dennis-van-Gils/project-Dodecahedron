@@ -494,10 +494,10 @@ def write_header_to_log():
     log.write("[HEADER]\n")
     log.write(window.qtxt_comments.toPlainText())
     log.write("\n\n[DATA]\n")
+    log.write("[s]\t[±0.5 °C]\t[±0.5 °C]\t[±3 pct]\t[±1 mbar]\t[°C]\t[°C]\n")
     log.write(
         "time\tDS_temp\tBME_temp\tBME_humi\tBME_pres\tJulabo_setp\tJulabo_bath\n"
     )
-    log.write("[s]\t[±0.5 °C]\t[±0.5 °C]\t[±3 pct]\t[±1 mbar]\t[°C]\t[°C]\n")
 
 
 def write_data_to_log():
