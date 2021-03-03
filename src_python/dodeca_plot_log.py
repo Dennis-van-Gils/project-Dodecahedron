@@ -137,7 +137,6 @@ def plot_log(log: Log):
         fn_save,
         dpi=90,
         orientation="portrait",
-        papertype="A4",
         format=img_format,
         transparent=False,
     )
