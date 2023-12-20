@@ -5,8 +5,8 @@
 __author__ = "Dennis van Gils"
 __authoremail__ = "vangils.dennis@gmail.com"
 __url__ = "https://github.com/Dennis-van-Gils/project-Dodecahedron"
-__date__ = "03-03-2021"
-__version__ = "1.0"
+__date__ = "20-12-2023"
+__version__ = "2.0"
 # pylint: disable=bare-except, broad-except
 
 import os
@@ -16,10 +16,95 @@ import time
 import numpy as np
 import psutil
 
-from PyQt5 import QtCore, QtGui
-from PyQt5 import QtWidgets as QtWid
-from PyQt5.QtCore import QDateTime
+# Mechanism to support both PyQt and PySide
+# -----------------------------------------
+
+PYQT5 = "PyQt5"
+PYQT6 = "PyQt6"
+PYSIDE2 = "PySide2"
+PYSIDE6 = "PySide6"
+QT_LIB_ORDER = [PYQT5, PYSIDE2, PYSIDE6, PYQT6]
+QT_LIB = None
+
+# Parse optional cli argument to enfore a QT_LIB
+# cli example: python benchmark.py pyside6
+if len(sys.argv) > 1:
+    arg1 = str(sys.argv[1]).upper()
+    for i, lib in enumerate(QT_LIB_ORDER):
+        if arg1 == lib.upper():
+            QT_LIB = lib
+            break
+
+if QT_LIB is None:
+    for lib in QT_LIB_ORDER:
+        if lib in sys.modules:
+            QT_LIB = lib
+            break
+
+if QT_LIB is None:
+    for lib in QT_LIB_ORDER:
+        try:
+            __import__(lib)
+            QT_LIB = lib
+            break
+        except ImportError:
+            pass
+
+if QT_LIB is None:
+    this_file = __file__.split(os.sep)[-1]
+    raise ImportError(
+        f"{this_file} requires PyQt5, PyQt6, PySide2 or PySide6; "
+        "none of these packages could be imported."
+    )
+
+# fmt: off
+# pylint: disable=import-error, no-name-in-module
+if QT_LIB == PYQT5:
+    from PyQt5 import QtCore, QtGui, QtWidgets as QtWid    # type: ignore
+    from PyQt5.QtCore import pyqtSlot as Slot              # type: ignore
+    from PyQt5.QtCore import pyqtSignal as Signal          # type: ignore
+elif QT_LIB == PYQT6:
+    from PyQt6 import QtCore, QtGui, QtWidgets as QtWid    # type: ignore
+    from PyQt6.QtCore import pyqtSlot as Slot              # type: ignore
+    from PyQt6.QtCore import pyqtSignal as Signal          # type: ignore
+elif QT_LIB == PYSIDE2:
+    from PySide2 import QtCore, QtGui, QtWidgets as QtWid  # type: ignore
+    from PySide2.QtCore import Slot                        # type: ignore
+    from PySide2.QtCore import Signal                      # type: ignore
+elif QT_LIB == PYSIDE6:
+    from PySide6 import QtCore, QtGui, QtWidgets as QtWid  # type: ignore
+    from PySide6.QtCore import Slot                        # type: ignore
+    from PySide6.QtCore import Signal                      # type: ignore
+# pylint: enable=import-error, no-name-in-module
+# fmt: on
+
+# pylint: disable=c-extension-no-member
+QT_VERSION = QtCore.QT_VERSION_STR if QT_LIB in (PYQT5, PYQT6) else QtCore.__version__
+# pylint: enable=c-extension-no-member
+
+# \end[Mechanism to support both PyQt and PySide]
+# -----------------------------------------------
+
 import pyqtgraph as pg
+
+print(f"{QT_LIB:9s} {QT_VERSION}")
+print(f"PyQtGraph {pg.__version__}")
+
+TRY_USING_OPENGL = True
+if TRY_USING_OPENGL:
+    try:
+        import OpenGL.GL as gl  # pylint: disable=unused-import
+        from OpenGL.version import __version__ as gl_version
+    except:
+        print("PyOpenGL  not found")
+        print("To install: `conda install pyopengl` or `pip install pyopengl`")
+    else:
+        print(f"PyOpenGL  {gl_version}")
+        pg.setConfigOptions(useOpenGL=True)
+        pg.setConfigOptions(antialias=True)
+        pg.setConfigOptions(enableExperimental=True)
+else:
+    print("PyOpenGL  disabled")
 
 from dvg_debug_functions import tprint, dprint, print_fancy_traceback as pft
 from dvg_pyqt_controls import (
@@ -39,20 +124,6 @@ from dvg_devices.Julabo_circulator_protocol_RS232 import Julabo_circulator
 from dvg_devices.Julabo_circulator_qdev import Julabo_circulator_qdev
 from dvg_qdeviceio import QDeviceIO
 
-
-TRY_USING_OPENGL = True
-if TRY_USING_OPENGL:
-    try:
-        import OpenGL.GL as gl  # pylint: disable=unused-import
-    except:
-        print("OpenGL acceleration: Disabled")
-        print("To install: `conda install pyopengl` or `pip install pyopengl`")
-    else:
-        print("OpenGL acceleration: Enabled")
-        pg.setConfigOptions(useOpenGL=True)
-        pg.setConfigOptions(antialias=True)
-        pg.setConfigOptions(enableExperimental=True)
-
 # Global pyqtgraph configuration
 # pg.setConfigOptions(leftButtonPan=False)
 pg.setConfigOption("foreground", "#EEE")
@@ -69,7 +140,7 @@ DEBUG = False
 
 
 def get_current_date_time():
-    cur_date_time = QDateTime.currentDateTime()
+    cur_date_time = QtCore.QDateTime.currentDateTime()
     return (
         cur_date_time.toString("dd-MM-yyyy"),  # Date
         cur_date_time.toString("HH:mm:ss"),  # Time
@@ -106,7 +177,7 @@ class MainWindow(QtWid.QWidget):
     def __init__(self, parent=None, **kwargs):
         super().__init__(parent, **kwargs)
 
-        self.setWindowTitle("Dodecahedron control")
+        self.setWindowTitle("Dodecahedron logger")
         self.setGeometry(350, 60, 1200, 900)
         self.setStyleSheet(SS_TEXTBOX_READ_ONLY + SS_GROUP)
 
@@ -126,7 +197,7 @@ class MainWindow(QtWid.QWidget):
 
         # Middle box
         self.qlbl_title = QtWid.QLabel(
-            "Dodecahedron control",
+            "Dodecahedron logger",
             font=QtGui.QFont("Palatino", 14, weight=QtGui.QFont.Bold),
         )
         self.qlbl_title.setAlignment(QtCore.Qt.AlignCenter)
@@ -361,7 +432,7 @@ class MainWindow(QtWid.QWidget):
     #   Handle controls
     # --------------------------------------------------------------------------
 
-    @QtCore.pyqtSlot()
+    @Slot()
     def update_GUI(self):
         str_cur_date, str_cur_time, _ = get_current_date_time()
         self.qlbl_cur_date_time.setText(
@@ -379,7 +450,7 @@ class MainWindow(QtWid.QWidget):
         self.qlin_bme_humi.setText("%.1f" % state.bme_humi)
         self.qlin_bme_pres.setText("%.1f" % state.bme_pres)
 
-    @QtCore.pyqtSlot()
+    @Slot()
     def update_chart(self):
         if DEBUG:
             tprint("update_chart")
@@ -405,7 +476,7 @@ def stop_running():
     print("done.")
 
 
-@QtCore.pyqtSlot()
+@Slot()
 def notify_connection_lost():
     stop_running()
 
@@ -424,7 +495,7 @@ def notify_connection_lost():
         pass  # Leave the GUI open for read-only inspection by the user
 
 
-@QtCore.pyqtSlot()
+@Slot()
 def about_to_quit():
     print("\nAbout to quit")
     stop_running()
@@ -536,7 +607,7 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------
 
     # Arduino
-    ard = Arduino(name="Ard", connect_to_specific_ID="BME280 & DS18B20 logger")
+    ard = Arduino(name="Ard", connect_to_specific_ID="Dodecahedron logger")
     ard.serial_settings["baudrate"] = 115200
     ard.auto_connect(filepath_last_known_port="config/port_Arduino.txt")
 
@@ -624,4 +695,7 @@ if __name__ == "__main__":
     qdev_julabo.start()
 
     window.show()
-    sys.exit(app.exec_())
+    if QT_LIB in (PYQT5, PYSIDE2):
+        sys.exit(app.exec_())
+    else:
+        sys.exit(app.exec())

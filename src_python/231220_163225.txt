@@ -1,0 +1,15 @@
+[HEADER]
+
+
+[DATA]
+[s]	[±0.5 °C]	[±0.5 °C]	[±3 pct]	[±1 mbar]	[°C]	[°C]
+time	DS_temp	BME_temp	BME_humi	BME_pres	Julabo_setp	Julabo_bath
+0.0	22.7	21.7	44.9	1007.6	nan	nan
+1.0	22.7	21.7	44.9	1007.6	nan	nan
+2.0	22.7	21.7	44.9	1007.6	nan	nan
+3.0	22.7	21.7	44.9	1007.6	nan	nan
+4.0	22.7	21.7	44.9	1007.6	nan	nan
+5.0	22.7	21.7	44.9	1007.6	nan	nan
+6.0	22.7	21.7	44.9	1007.6	nan	nan
+7.0	22.7	21.7	45.0	1007.6	nan	nan
+8.0	22.7	21.7	45.0	1007.6	nan	nan
